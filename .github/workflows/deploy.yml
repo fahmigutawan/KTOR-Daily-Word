@@ -1,0 +1,101 @@
+name: Multi-Environment Deploy
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploys:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Init Branch, Directory, and ENV
+        run: |
+          echo "BRANCH=${{ github.ref_name }}" >> $GITHUB_ENV
+          
+          case "${{ github.ref_name }}" in
+            "main")
+              echo "APP_DIR=/var/www/daily-word" >> $GITHUB_ENV
+            ;;
+            *)
+              echo "Branch tidak didukung untuk workflow"
+              exit 1
+            ;;
+          esac
+
+      - name: Init ~/.ssh folder
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+
+      - name: Init known-hosts
+        run: |
+          ssh-keyscan -p ${{ secrets.VPS_PORT }} -H "${{ secrets.VPS_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Copying Private Key to ~/.ssh/id_rsa
+        run: |
+          echo "${{ secrets.VPS_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          cat ~/.ssh/id_rsa
+
+      - name: Running remove last project folder
+        run: |
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.VPS_PORT }} \
+           ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
+             export NVM_DIR="$HOME/.nvm"
+             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          
+             rm -rf ${{ env.APP_DIR }}
+          EOF
+
+      - name: Downloading the ${{ env.BRANCH }} Branch into VPS
+        uses: appleboy/scp-action@master
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USERNAME }}
+          port: ${{ secrets.VPS_PORT }}
+          key: ${{ secrets.VPS_PRIVATE_KEY }}
+          source: "."
+          target: ${{ env.APP_DIR }}
+
+      - name: Build shadowJar
+        run: |
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.VPS_PORT }} \
+           ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
+             cd ${{ env.APP_DIR }}
+             JAVA_HOME="/opt/jdk-21.0.6" ./gradlew clean buildFatJar 
+          
+          EOF
+
+      - name: Running pm2
+        run: |
+          ssh -i ~/.ssh/id_rsa -p ${{ secrets.VPS_PORT }} \
+           ${{ secrets.VPS_USERNAME }}@${{ secrets.VPS_HOST }} << 'EOF'
+             export NVM_DIR="$HOME/.nvm"
+             [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
+             [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
+          
+             sudo timedatectl set-timezone Asia/Jakarta
+
+          case "${{ github.ref_name }}" in
+            "main")
+              if pm2 list | grep -q 'be-staging'; then
+                echo 'Process exists, restarting...'
+                pm2 restart daily-word
+              else
+                echo 'Process not found, starting...'
+                pm2 start daily-word.config.js
+               fi
+            ;;
+            *)
+              echo "Branch tidak didukung untuk workflow"
+              exit 1
+            ;;
+          esac
+          
+          EOF

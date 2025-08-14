@@ -13,7 +13,7 @@ import io.ktor.server.application.*
 import org.slf4j.LoggerFactory
 
 val logger = LoggerFactory.getLogger("logger")
-var env = env("")
+var env = env()
 
 fun main(args: Array<String>) {
     io.ktor.server.netty.EngineMain.main(args)
