@@ -9,6 +9,7 @@ fun configureEnv(){
         db_port = System.getenv("DB_PORT"),
         db_username = System.getenv("DB_USERNAME"),
         db_password = System.getenv("DB_PASSWORD"),
-        db_databasename = System.getenv("DB_DATABASENAME")
+        db_databasename = System.getenv("DB_DATABASENAME"),
+        dict_path = System.getenv("DICT_PATH")
     )
 }

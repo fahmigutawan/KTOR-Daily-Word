@@ -1,5 +1,6 @@
 package com.fahmigutawan.data
 
+import com.fahmigutawan.env
 import com.fahmigutawan.logger
 import com.github.doyaaaaaken.kotlincsv.dsl.csvReader
 import java.io.File
@@ -9,7 +10,7 @@ class Dictionary {
     var data: Map<String, List<String>> = emptyMap()
 
     init {
-        val file = File("dict.csv")
+        val file = File(env.dict_path)
         val csv = csvReader().readAll(file)
         initDataClasses(csv)
     }
