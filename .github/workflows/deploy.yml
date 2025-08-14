@@ -84,7 +84,7 @@ jobs:
 
           case "${{ github.ref_name }}" in
             "main")
-              if pm2 list | grep -q 'be-staging'; then
+              if pm2 list | grep -q 'daily-word'; then
                 echo 'Process exists, restarting...'
                 pm2 restart daily-word
               else
