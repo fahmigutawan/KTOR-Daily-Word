@@ -134,5 +134,26 @@ object WordApi : KoinComponent {
                 message = res
             )
         }
+
+        get("/refresh") {
+            val word = getUniqueWord()
+            val definitions = dictionary.data[word]
+
+            val res = ApiResponseOut(
+                metadata = MetadataOut(
+                    status = HttpStatusCode.OK.value,
+                    message = "success"
+                ),
+                data = DailyWordResponse(
+                    word = word,
+                    definitions = definitions ?: emptyList()
+                )
+            )
+
+            call.respond(
+                status = HttpStatusCode.fromValue(res.metadata.status),
+                message = res
+            )
+        }
     }
 }
